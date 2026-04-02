@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Shush",
+  "version": "1.0.0",
+  "description": "Auto-mutes ads on streaming platforms.",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.hotstar.com/*",
+        "*://*.jiocinema.com/*",
+        "*://*.jiostar.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "128": "icon.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "shush@local"
+    }
+  }
+}
