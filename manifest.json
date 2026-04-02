@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Shush",
-  "version": "1.0.0",
-  "description": "Auto-mutes ads on streaming platforms.",
+  "version": "1.0.1",
+  "description": "Auto-mutes ads on streaming platforms (Firefox-first build).",
   "permissions": ["storage"],
+  "host_permissions": [
+    "*://*.jiohotstar.com/*",
+    "*://*.hotstar.com/*",
+    "*://*.jiocinema.com/*",
+    "*://*.jiostar.com/*"
+  ],
   "content_scripts": [
     {
       "matches": [
+        "*://*.jiohotstar.com/*",
         "*://*.hotstar.com/*",
         "*://*.jiocinema.com/*",
         "*://*.jiostar.com/*"
@@ -16,11 +23,13 @@
     }
   ],
   "icons": {
+    "48": "icon.png",
     "128": "icon.png"
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "shush@local"
+      "id": "shush@local",
+      "strict_min_version": "121.0"
     }
   }
 }

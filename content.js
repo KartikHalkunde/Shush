@@ -1,13 +1,20 @@
 (() => {
   let observer;
   let lastAdState = null;
-  let userMutedBeforeAd = null;
+  let shushMutedActive = false;
+  let currentVideo = null;
 
   const AD_UI_SELECTORS = [
     '.ad-badge',
     '.ads-label',
+    '.sh-ad-timer',
+    '.video-ad-label',
+    '.player-ad-overlay',
+    '.atv-ad-overlay',
+    '[class*="ad-"]',
     '[class*="ad-indicator"]',
     '[class*="advert"]',
+    '[id*="ad" i]',
     '[aria-label*="ad" i]',
     '[data-testid*="ad" i]'
   ];
@@ -17,10 +24,19 @@
     /\bAdvertisement\b/i,
     /\bSponsored\b/i,
     /\bVisit Advertiser\b/i,
-    /\bLearn More\b/i
+    /\bLearn More\b/i,
+    /\bYour video will resume\b/i,
+    /\bSkip Ad\b/i
   ];
 
   const getVideo = () => document.querySelector('video');
+
+  const isVisible = (el) => {
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    return el.getClientRects().length > 0;
+  };
 
   const isAdByText = () => {
     const rootText = document.body?.innerText;
@@ -29,33 +45,64 @@
   };
 
   const isAdBySelectors = () => {
-    return AD_UI_SELECTORS.some((selector) => document.querySelector(selector));
+    return AD_UI_SELECTORS.some((selector) => {
+      const node = document.querySelector(selector);
+      return isVisible(node);
+    });
+  };
+
+  const bindVideo = () => {
+    const video = getVideo();
+    if (!video || video === currentVideo) return;
+
+    currentVideo = video;
+
+    // If the player swaps the <video> node during an ad, keep it muted.
+    if (lastAdState) {
+      currentVideo.muted = true;
+      shushMutedActive = true;
+    }
+
+    currentVideo.addEventListener('volumechange', () => {
+      if (lastAdState && shushMutedActive && !currentVideo.muted) {
+        currentVideo.muted = true;
+      }
+    });
   };
 
   const toggleMute = (isAdPlaying) => {
+    bindVideo();
     const video = getVideo();
     if (!video) return;
 
-    if (isAdPlaying && !video.muted) {
-      userMutedBeforeAd = false;
-      video.muted = true;
-      console.log('Shush: Ad detected. Muting...');
+    if (isAdPlaying) {
+      if (!video.muted) {
+        video.muted = true;
+        shushMutedActive = true;
+        console.log('Shush: Ad detected. Muting...');
+      }
       return;
     }
 
-    if (!isAdPlaying && video.muted && userMutedBeforeAd === false) {
+    if (!isAdPlaying && video.muted && shushMutedActive) {
       video.muted = false;
-      userMutedBeforeAd = null;
-      console.log('Shush: Match resumed. Unmuting...');
+      shushMutedActive = false;
+      console.log('Shush: Content resumed. Unmuting...');
+    } else if (!isAdPlaying) {
+      shushMutedActive = false;
     }
   };
 
   const checkAdState = () => {
+    bindVideo();
     const isAdPlaying = isAdBySelectors() || isAdByText();
 
-    // Avoid repeated writes to the same state
-    if (isAdPlaying === lastAdState) return;
+    // Keep enforcing mute during ads even if state did not change.
+    if (isAdPlaying) {
+      toggleMute(true);
+    }
 
+    if (isAdPlaying === lastAdState) return;
     lastAdState = isAdPlaying;
     toggleMute(isAdPlaying);
   };
@@ -71,7 +118,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      characterData: false
+      attributeFilter: ['class', 'style', 'hidden', 'aria-label', 'data-testid']
     });
 
     checkAdState();
